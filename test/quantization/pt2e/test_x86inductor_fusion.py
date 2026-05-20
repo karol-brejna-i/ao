@@ -365,7 +365,6 @@ def _should_use_u8s8() -> bool:
     )
 
 
-@unittest.skipIf(not torch_version_at_least("2.8.0"), "Requires torch 2.8+")
 @unittest.skipIf(torch.version.hip is not None, "Not applicable to ROCm")
 class TestPatternMatcher(TestPatternMatcherBase):
     def _qconv2d_test_helper(self, device="cpu", mixed_bf16=False, is_fp8=False):
@@ -1666,6 +1665,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_cpu(self):
         r"""
         This testcase will quantize a single Linear Moduel.
@@ -1724,6 +1726,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_mixed_bf16(self):
         r"""
         This testcase will quantize a single Linear Moduel with mixed_bf16 quantization.
@@ -1745,6 +1750,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_input_dim_exceeds_2(self):
         r"""
         This testcase will quantize a single Linear Moduel.
@@ -1768,6 +1776,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_mixed_bf16_input_dim_exceeds_2(self):
         r"""
         This testcase will quantize a single Linear Moduel with mixed_bf16 quantization.
@@ -1806,6 +1817,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_input_dim_exceeds_2_and_not_contiguous(self):
         r"""
         This testcase will quantize a single Linear Module.
@@ -1863,6 +1877,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_mixed_bf16_input_dim_exceeds_2_and_not_contiguous(self):
         r"""
         This testcase will quantize a single Linear Module for int8_bf16.
@@ -1948,6 +1965,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_relu_cpu(self):
         r"""
         This testcase will quantize a Linear->ReLU pattern.
@@ -1967,6 +1987,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_relu_mixed_bf16(self):
         r"""
         This testcase will quantize a Linear->ReLU pattern with mixed_bf16 quantization.
@@ -1986,6 +2009,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_relu_input_dim_exceeds_2(self):
         r"""
         This testcase will quantize a Linear->ReLU pattern.
@@ -2005,6 +2031,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_relu_mixed_bf16_input_dim_exceeds_2(self):
         r"""
         This testcase will quantize a Linear->ReLU pattern with mixed_bf16 quantization.
@@ -2025,6 +2054,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_gelu_cpu(self):
         r"""
         This testcase will quantize a Linear->GELU pattern.
@@ -2048,6 +2080,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_gelu_mixed_bf16(self):
         r"""
         This testcase will quantize a Linear->GELU pattern with mixed_bf16 quantization.
@@ -2246,6 +2281,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     @parametrize("use_relu", [True, False])
     @parametrize("mixed_bf16", [True, False])
     def test_fp8_qlinear_add_cpu(self, use_relu, mixed_bf16):
@@ -2330,6 +2368,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_dequant_promotion_cpu(self):
         r"""
         This testcase test if dequant node before linear is promoted correctly:
@@ -2370,6 +2411,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_dequant_promotion_mixed_bf16(self):
         r"""
         Test with mixed_bf16 quantization.
@@ -2408,6 +2452,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_dequant_promotion_cpu_input_dim_exceeds_2(self):
         r"""
         This testcase test if dequant node before linear is promoted correctly:
@@ -2450,6 +2497,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNNBF16
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_dequant_promotion_mixed_bf16_input_dim_exceeds_2(self):
         r"""
         Test with mixed_bf16 quantization.
@@ -2534,6 +2584,9 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @skipIfNoDynamoSupport
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_qlinear_mul_cpu(self):
         r"""
         This testcase will quantize a Linear->Mul pattern.
@@ -2808,10 +2861,10 @@ class TestPatternMatcher(TestPatternMatcherBase):
     @parametrize(
         "base_config",
         [
-            Int8StaticActivationInt8WeightConfig(granularity=(PerTensor(), PerRow())),
+            Int8StaticActivationInt8WeightConfig(granularity=[PerTensor(), PerRow()]),
             Int8StaticActivationInt8WeightConfig(),
             Int8DynamicActivationInt8WeightConfig(
-                version=2, granularity=(PerTensor(), PerRow())
+                version=2, granularity=[PerTensor(), PerRow()]
             ),
             Int8DynamicActivationInt8WeightConfig(version=2),
         ],
@@ -3020,7 +3073,6 @@ class TestPatternMatcher(TestPatternMatcherBase):
         "specialize_float": True,
     }
 )
-@unittest.skipIf(not torch_version_at_least("2.8.0"), "Requires torch 2.8+")
 @unittest.skipIf(torch.version.hip is not None, "Not applicable to ROCm")
 class TestDynamicPatternMatcher(TestPatternMatcherBase):
     def test_qconv2d_maxpool2d_linear_dynamic_cpu(self, include_ops=None):
@@ -3208,6 +3260,9 @@ class TestDynamicPatternMatcher(TestPatternMatcherBase):
     @skipIfNoONEDNN
     @skipIfNoFloat8Support
     @unittest.skipIf(torch.xpu.is_available(), "Doesn't work with XPU")
+    @unittest.skipIf(
+        torch_version_at_least("2.13.0.dev"), "Skip due to torch nightly issue"
+    )
     def test_fp8_q_attention_block(self):
         for annotate_matmul in [True, False]:
             self._test_q_attention_block_helper(
@@ -3452,7 +3507,6 @@ class TestDynamicPatternMatcher(TestPatternMatcherBase):
             )
 
 
-@unittest.skipIf(not torch_version_at_least("2.8.0"), "Requires torch 2.8+")
 @unittest.skipIf(torch.version.hip is not None, "Not applicable to ROCm")
 class TestLowering(TestPatternMatcherBase):
     def test_lowering_quant_dequant_fp8(self):
@@ -3612,7 +3666,7 @@ def make_dynamic_cls(cls, xfail_prop="_expected_failure_dynamic"):
 
 RUN_CPU = HAS_CPU and not IS_MACOS and torch.version.hip is None
 
-if RUN_CPU and torch_version_at_least("2.8.0"):
+if RUN_CPU:
 
     class BaseTest(NamedTuple):
         name: str
