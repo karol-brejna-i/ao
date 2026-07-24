@@ -79,11 +79,5 @@ jobs:
               source /tmp/xpu_venv/bin/activate
               pip install --upgrade pip --quiet
               pip install torch --index-url https://download.pytorch.org/whl/nightly/xpu --quiet
-              python -c "
-import torch
-print(f\"torch version: {torch.__version__}\")
-print(f\"torch.accelerator.is_available(): {torch.accelerator.is_available()}\")
-print(f\"torch.accelerator.current_accelerator(): {torch.accelerator.current_accelerator()}\")
-print(f\"Visible accelerator count: {torch.accelerator.device_count()}\")
-"
+              python -c "import torch; print(f\"torch version: {torch.__version__}\"); print(f\"torch.accelerator.is_available(): {torch.accelerator.is_available()}\"); print(f\"torch.accelerator.current_accelerator(): {torch.accelerator.current_accelerator()}\"); print(f\"Visible accelerator count: {torch.accelerator.device_count()}\")"
             '
