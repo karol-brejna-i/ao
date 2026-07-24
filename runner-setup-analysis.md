@@ -173,33 +173,88 @@ credential that should never be pasted into chat).
 - [x] Added `fork` git remote in local checkout:
       `fork https://github.com/karol-brejna-i/ao.git` (alongside existing
       `origin` = `pytorch/ao`, left unchanged).
-- [x] Created [.github/workflows/xpu_test_2gpu.yml](.github/workflows/xpu_test_2gpu.yml) —
+- [x] Created [.github/workflows/xpu_2card_test.yml](.github/workflows/xpu_2card_test.yml)
+      (originally `xpu_test_2gpu.yml`, renamed for consistency — see §6) —
       copy of `xpu_test.yml`, adapted to run on this self-hosted runner:
       - `runs-on: [self-hosted, xpu, pvc-2]` instead of `linux.idc.xpu`.
       - Dropped the AWS OIDC (`configure-aws-credentials`) + private ECR login
-        steps (won't work outside the `pytorch` org). Kept the
-        `calculate-docker-image` action (local hash calc, no AWS needed) and
-        added a plain `docker pull` from the public `ghcr.io/pytorch/ci-image`
-        mirror instead of the ECR-specific `pull-docker-image` action.
-      - Trigger restricted to `workflow_dispatch` only for now (no
-        push-tag/schedule) while validating.
-      - Points `TEST_COMMAND` at the new `ci_test_xpu_2gpu.sh` script.
-- [x] Created [.github/scripts/ci_test_xpu_2gpu.sh](.github/scripts/ci_test_xpu_2gpu.sh) —
-      copy of `ci_test_xpu.sh` (same conda env + pytest invocation as upstream
-      for now). **TODO left in place:** narrow the pytest selection down to
-      2-GPU/distributed-only test cases.
+        steps (won't work outside the `pytorch` org), and the now-unused
+        `permissions.id-token: write`. Kept the `calculate-docker-image`
+        action (local hash calc, no AWS needed) and added a plain
+        `docker pull` from the public `ghcr.io/pytorch/ci-image` mirror
+        instead of the ECR-specific `pull-docker-image` action.
+      - Triggers: `workflow_dispatch` + `push` of `ciflow/xpu-2card/*` tags
+        (registered in `.github/pytorch-probot.yml`). No `schedule`.
+      - GPU-count health checks require `-lt 2` (at least 2 GPUs), not just
+        non-zero.
+      - Points `TEST_COMMAND` at `ci_test_xpu_2card.sh`.
+- [x] Created [.github/scripts/ci_test_xpu_2card.sh](.github/scripts/ci_test_xpu_2card.sh)
+      (originally `ci_test_xpu_2gpu.sh`, renamed — see §6) — instead of
+      re-running the full single-GPU suite, delegates to the repo's own
+      2-GPU distributed test scripts, `test/float8/test_fsdp.sh` and
+      `test/float8/test_fsdp_compile.sh` (each self-contained at
+      `world_size=2` via `CUDA_VISIBLE_DEVICES=0,1`). Deliberately does *not*
+      call `test/float8/test_dtensor.sh` /
+      `test_everything_multi_gpu.sh`, since those chain into
+      `test_fsdp2_tp.py` via `torchrun --nproc_per_node 4`, which needs 4
+      GPUs.
 
-## 6. Open items / not yet done
-- [ ] Narrow `ci_test_xpu_2gpu.sh` pytest selection to 2-GPU/multi-device test
-      cases only (currently identical to the full upstream single-GPU suite).
-      Candidate test files use `world_size`/`skip_if_lt_x_gpu`
-      (e.g. `test/float8/test_fsdp2/test_fsdp2.py`,
-      `test/quantization/quantize_/workflows/nf4/test_nf4_tensor.py`,
-      `test/test_low_bit_optim.py`) but are currently written against CUDA
-      (`nccl`/`device_mesh("cuda", ...)`) — need to check XPU/`xccl` support
-      before wiring them in.
-- [ ] `xpu_test_2gpu.yml` not yet exercised end-to-end (no `workflow_dispatch`
+## 6. Findings from a parallel analysis on the same topic
+
+A more mature analysis of this exact problem (2-card/multi-GPU XPU CI for
+`pytorch/ao`) was found in `.cognitron/xpu_2card_workflow_analysis.md` (plus
+companion `xpu_2card_test.yml` / `ci_test_xpu_2card.sh` drafts) elsewhere in
+this workspace. Key findings incorporated above:
+
+- **Naming convention**: that analysis settled on `xpu_2card_test.yml` /
+  `ci_test_xpu_2card.sh` / `ciflow/xpu-2card` — our files were renamed from
+  `*_2gpu.*` to match, in case this work and that analysis ever converge.
+- **GPU-count health checks should assert `-lt 2`**, not just `-eq 0` — a
+  workflow specifically meant for 2-card tests should fail fast if fewer than
+  2 GPUs are visible, not merely if none are. Applied to `xpu_2card_test.yml`.
+- **Real upstream PR precedent for XPU-enabling the distributed test code**
+  (this is the actual functional blocker, beyond CI plumbing): four in-flight
+  `pytorch/ao` PRs already add XPU support to the exact tests
+  `ci_test_xpu_2card.sh` runs:
+  - [PR #4510](https://github.com/pytorch/ao/pull/4510) — FSDP2 tests
+    (`test/float8/test_fsdp2/test_fsdp2.py`, `test_fsdp2_tp.py`).
+  - [PR #4511](https://github.com/pytorch/ao/pull/4511) — `test/float8/test_fsdp.py`/`.sh`.
+  - [PR #4512](https://github.com/pytorch/ao/pull/4512) — `test/float8/test_fsdp_compile.py`/`.sh`.
+  - [PR #4532](https://github.com/pytorch/ao/pull/4532) — `test/prototype/mx_formats/` multi-card tests.
+  - The core fix pattern: replace hardcoded `dist.init_process_group("nccl", ...)`
+    with `dist.init_process_group(dist.get_default_backend_for_device(device_type), ...)`
+    (a native `torch.distributed` API resolving `"cuda"`→`nccl`, `"xpu"`→`xccl`),
+    and replace `torch.cuda.set_device(rank)`/`.cuda()`/`.to(rank)` calls with
+    `torch.accelerator.*` equivalents.
+  - **As of this writing, none of these PRs are merged**, and `main` still
+    hardcodes CUDA everywhere in its distributed tests. Until one of them
+    lands, `test_fsdp.sh`/`test_fsdp_compile.sh` will silently skip/no-op on
+    our XPU runner (their skip-guards check `torch.cuda.is_available()`).
+  - **Decision (matches the parallel analysis): do not reimplement this fix
+    ourselves right now** — just reference these PRs in comments (done, in
+    `ci_test_xpu_2card.sh`) and rebase/cherry-pick from them once we're ready
+    to make the 2-card job actually pass, rather than reimplementing from
+    scratch.
+- **`test/float8/test_dtensor.py` (2-GPU TP/SP) has no known XPU fix yet** —
+  only its 4-GPU sibling (`test_fsdp2_tp.py`) is covered by PR #4510. It would
+  need to be split out of `test_dtensor.sh` before it could run standalone on
+  a 2-card job.
+- The parallel analysis also flagged a **placeholder/unconfirmed runner label**
+  problem (`linux.idc.xpu.2card`, TODO pending runner-fleet-owner
+  confirmation) — not applicable to us, since we already have our own
+  concrete self-hosted runner (`dut1043pvc-xpu`) rather than relying on an
+  org-wide 2-card label existing.
+
+## 7. Open items / not yet done
+- [ ] `ci_test_xpu_2card.sh` will currently no-op/skip on XPU (both
+      `test_fsdp.sh` and `test_fsdp_compile.sh` guard on
+      `torch.cuda.is_available()`), until PR #4511/#4512 (or an equivalent
+      fix) lands — see §6. This is the real remaining blocker, not CI
+      plumbing.
+- [ ] `xpu_2card_test.yml` not yet exercised end-to-end (no `workflow_dispatch`
       run triggered yet) — validate the ghcr.io image pull and container run
       actually work without AWS credentials.
-- [ ] Not yet pushed to the `fork` remote — changes exist only in the local
-      checkout so far.
+- [ ] Renamed files not yet pushed to the `fork` remote — the rename +
+      content updates exist only in the local checkout so far (branch
+      `xpu-2gpu-runner-setup`, which itself may be worth renaming to
+      `xpu-2card-...` for consistency, though not yet done).

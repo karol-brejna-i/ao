@@ -5,3 +5,4 @@ ciflow_push_tags:
 - ciflow/rocm
 - ciflow/4xh100
 - ciflow/xpu
+- ciflow/xpu-2card
