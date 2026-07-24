@@ -1,0 +1,89 @@
+# Diagnostic workflow: prints how many XPU accelerators PyTorch can see on the
+# self-hosted runner. Useful for verifying GPU passthrough (host tiles vs.
+# container-visible devices) after runner/driver changes, independently of the
+# full test suite in xpu_2card_test.yml.
+#
+# See .cognitron/runner-health-check.md for the manual (non-CI) version of
+# these checks, and .cognitron/runner-setup-analysis.md for background on
+# why this machine shows 2 physical PVC cards but 4 accelerators (2 tiles
+# each).
+
+name: xpu-device-count
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xpu_device_count-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  device-count:
+    timeout-minutes: 30
+    runs-on: [self-hosted, xpu, pvc-2]
+    env:
+      DOCKER_IMAGE: ci-image:pytorch-linux-noble-xpu-n-py3
+    steps:
+      - name: Checkout PyTorch (for docker image hash calculation)
+        uses: actions/checkout@v4
+        with:
+          repository: pytorch/pytorch
+          ref: nightly
+          path: pytorch
+          fetch-depth: 1
+          submodules: false
+
+      - name: Runner health check xpu-smi (host view)
+        run: timeout 30 xpu-smi discovery || true
+
+      - name: XPU set GPU_FLAG
+        shell: bash
+        run: |
+          render_gid=$(cat /etc/group | grep render | cut -d: -f3)
+          echo "GPU_FLAG=--device=/dev/mem --device=/dev/dri --group-add video --group-add $render_gid" >> "${GITHUB_ENV}"
+
+      - name: Calculate docker image
+        id: calculate-docker-image
+        uses: pytorch/test-infra/.github/actions/calculate-docker-image@main
+        with:
+          docker-image-name: ${{ env.DOCKER_IMAGE }}
+          working-directory: pytorch
+          repo-name: pytorch
+
+      - name: Pull docker image from public ghcr.io mirror
+        env:
+          ECR_DOCKER_IMAGE: ${{ steps.calculate-docker-image.outputs.docker-image }}
+        shell: bash
+        run: |
+          tag=${ECR_DOCKER_IMAGE##*:}
+          ghcr_image="ghcr.io/pytorch/ci-image:${tag/:/-}"
+          docker pull "${ghcr_image}"
+          echo "DOCKER_IMAGE=${ghcr_image}" >> "${GITHUB_ENV}"
+
+      - name: Report visible accelerators (container view)
+        shell: bash
+        run: |
+          set -x
+          # shellcheck disable=SC2086
+          docker run --rm \
+            ${GPU_FLAG:-} \
+            --user "$(id -u):$(id -g)" \
+            --shm-size="2g" \
+            "${DOCKER_IMAGE}" \
+            bash -c '
+              set -e
+              python3 -m venv /tmp/xpu_venv
+              source /tmp/xpu_venv/bin/activate
+              pip install --upgrade pip --quiet
+              pip install torch --index-url https://download.pytorch.org/whl/nightly/xpu --quiet
+              python -c "
+import torch
+print(f\"torch version: {torch.__version__}\")
+print(f\"torch.accelerator.is_available(): {torch.accelerator.is_available()}\")
+print(f\"torch.accelerator.current_accelerator(): {torch.accelerator.current_accelerator()}\")
+print(f\"Visible accelerator count: {torch.accelerator.device_count()}\")
+"
+            '
